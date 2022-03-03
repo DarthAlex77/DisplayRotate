@@ -42,10 +42,15 @@
     </dxmvvm:Interaction.Behaviors>
     <busyIndicator:BusyMask DataContext="{StaticResource ViewModel}" IsBusy="{Binding IsBusy}" BusyContent="{Binding BusyContent}">
         <sf:SfDataGrid ItemsSource="{Binding Arduinos}" AutoGenerateColumns="False" AllowDraggingRows="False" AllowDrop="True" ColumnSizer="AutoLastColumnFill"
-                       DataContext="{StaticResource ViewModel}">
+                       DataContext="{StaticResource ViewModel}" SelectedItem="{Binding SelectedArduino}">
             <dxmvvm:Interaction.Behaviors>
                 <extras:SelectionBehaviour FirstDetailsViewSelectedItem="{Binding SelectedDisplay, Mode=TwoWay}" />
             </dxmvvm:Interaction.Behaviors>
+            <!--<sf:SfDataGrid.RecordContextMenu>
+                <ContextMenu>
+                    ~1~<MenuItem Header="Reset COM Port" Command="{Binding Source={StaticResource ViewModel},Path=ResetSerialPortCommand}"/> Not working, need admin@1@
+                </ContextMenu>
+            </sf:SfDataGrid.RecordContextMenu>-->
             <sf:SfDataGrid.Columns>
                 <sf:GridTextColumn MappingName="SerialPort.PortName" HeaderText="Serial Port" />
             </sf:SfDataGrid.Columns>

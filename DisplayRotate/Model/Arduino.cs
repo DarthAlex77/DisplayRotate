@@ -78,7 +78,7 @@ namespace DisplayRotate.Model
                             }
                             break;
                         }
-                        case "IsStarted" when Displays.All(x => !x.IsStarted):
+                        case "IsStarted" when Displays.All(x => x.IsStarted ==false):
                         {
                             if (Worker != null)
                             {
@@ -98,7 +98,7 @@ namespace DisplayRotate.Model
             Worker.WorkerReportsProgress =  true;
             Worker.DoWork                += Model.Worker.MpuWorker;
             Worker.ProgressChanged       += (_, args) => DisplayProgressChanged?.Invoke(reset, args);
-            Worker.RunWorkerCompleted    += (_, args) => { Worker = null; };
+            Worker.RunWorkerCompleted    += (_, _) => { Worker = null; };
             Worker.RunWorkerAsync(new List<object> {this, display, reset});
         }
 

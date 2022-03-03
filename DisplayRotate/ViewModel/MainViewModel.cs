@@ -14,6 +14,7 @@
  * You should have received a copy of the GNU General Public License 
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -22,6 +23,7 @@ using System.IO.Ports;
 using System.Linq;
 using System.Windows;
 using DevExpress.Mvvm;
+using DisplayRotate.Extras;
 using DisplayRotate.Model;
 using Newtonsoft.Json;
 
@@ -31,14 +33,30 @@ namespace DisplayRotate.ViewModel
     {
         public MainViewModel()
         {
-            InitializeCommand = new DelegateCommand(Initialize, CanRun);
-            StartCommand      = new DelegateCommand(Start,      CanStart);
-            StopCommand       = new DelegateCommand(Stop,       CanStop);
-            CalibrateCommand  = new DelegateCommand(Calibrate,  CanRun);
-            ResetCommand      = new DelegateCommand(Reset,      CanRun);
-            SaveDataCommand   = new DelegateCommand(SaveData);
+            //ResetSerialPortCommand = new DelegateCommand(ResetSerialPort, CanResetSerialPort);
+            InitializeCommand      = new DelegateCommand(Initialize,      CanRun);
+            StartCommand           = new DelegateCommand(Start,           CanStart);
+            StopCommand            = new DelegateCommand(Stop,            CanStop);
+            CalibrateCommand       = new DelegateCommand(Calibrate,       CanRun);
+            ResetCommand           = new DelegateCommand(Reset,           CanRun);
+            SaveDataCommand        = new DelegateCommand(SaveData);
             InitializeList();
         }
+
+        #region Methods
+
+        private bool CanResetSerialPort()
+        {
+            return SelectedArduino != null && SelectedArduino.Displays.All(x => !x.IsStarted) && SelectedArduino.Worker == null && SelectedArduino.SerialPort.PortName != "None";
+        }
+
+        // private void ResetSerialPort()
+        // {
+        //     if (!PortHelper.RestartSerialPort(SelectedArduino.SerialPort.PortName))
+        //     {
+        //         MessageBox.Show($"Restarting {SelectedArduino.SerialPort.PortName} Failed");
+        //     }
+        // }
 
         private bool CanRun()
         {
@@ -53,16 +71,26 @@ namespace DisplayRotate.ViewModel
             return false;
         }
 
-        #region Methods
-
         private bool CanStop()
         {
-            return SelectedDisplay != null && SelectedDisplay.IsStarted;
+            return SelectedDisplay?.IsStarted == true;
         }
 
         private bool CanStart()
         {
-            return SelectedDisplay != null && !SelectedDisplay.IsStarted && SelectedDisplay.SerialPortName != "None" && SelectedDisplay.MpuAddress != MpuAddress.None;
+            if (SelectedDisplay!=null)
+            {
+                Arduino arduino = Arduinos.First(x => x.SerialPort.PortName == SelectedDisplay.SerialPortName);
+                if(arduino.Displays.All(x=>x.IsStarted==false)&&arduino.Worker!=null)
+                {
+                    return false;
+                }
+                if (!SelectedDisplay.IsStarted && SelectedDisplay.SerialPortName != "None" && SelectedDisplay.MpuAddress != MpuAddress.None)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private void Reset()
@@ -92,15 +120,16 @@ namespace DisplayRotate.ViewModel
 
         private void SaveData()
         {
-            Configuration config   = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            Configuration config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             config.AppSettings.Settings["Displays"].Value = JsonConvert.SerializeObject(Arduinos.SelectMany(arduino => arduino.Displays).ToList());
             config.Save(ConfigurationSaveMode.Modified);
         }
 
         private void InitializeList()
         {
+            bool          autoStart     = Convert.ToBoolean(ConfigurationManager.AppSettings["AutoStart"]);
             string        displayString = ConfigurationManager.AppSettings["Displays"];
-            List<Display> displays = null;
+            List<Display> displays      = null;
             if (!string.IsNullOrWhiteSpace(displayString))
             {
                 try
@@ -120,6 +149,7 @@ namespace DisplayRotate.ViewModel
             {
                 displays = Display.GetDisplays();
             }
+            //
             Arduinos = new BindingList<Arduino>();
             foreach (string portName in SerialPort.GetPortNames())
             {
@@ -141,6 +171,13 @@ namespace DisplayRotate.ViewModel
             }
             foreach (Arduino arduino in Arduinos)
             {
+                if (arduino.SerialPort.PortName != "None" && autoStart)
+                {
+                    foreach (Display arduinoDisplay in arduino.Displays)
+                    {
+                        arduinoDisplay.IsStarted = true;
+                    }
+                }
                 arduino.DisplayProgressChanged += WorkerReport;
             }
         }
@@ -212,13 +249,15 @@ namespace DisplayRotate.ViewModel
 
         #region Properties
 
-        public DelegateCommand      InitializeCommand { get; set; }
-        public DelegateCommand      StartCommand      { get; set; }
-        public DelegateCommand      StopCommand       { get; set; }
-        public DelegateCommand      CalibrateCommand  { get; set; }
-        public DelegateCommand      ResetCommand      { get; set; }
-        public DelegateCommand      SaveDataCommand   { get; set; }
-        public BindingList<Arduino> Arduinos          { get; set; }
+        public DelegateCommand      ResetSerialPortCommand { get; set; }
+        public DelegateCommand      InitializeCommand      { get; set; }
+        public DelegateCommand      StartCommand           { get; set; }
+        public DelegateCommand      StopCommand            { get; set; }
+        public DelegateCommand      CalibrateCommand       { get; set; }
+        public DelegateCommand      ResetCommand           { get; set; }
+        public DelegateCommand      SaveDataCommand        { get; set; }
+        public BindingList<Arduino> Arduinos               { get; set; }
+        public Arduino              SelectedArduino        { get; set; }
         public Display SelectedDisplay
         {
             get => GetValue<Display>();
